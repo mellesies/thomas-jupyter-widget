@@ -1,0 +1,2 @@
+recursive-include thomas/static *.*
+include thomas-jupyter-widget.json
