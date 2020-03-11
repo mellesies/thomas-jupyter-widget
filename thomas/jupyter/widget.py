@@ -35,18 +35,25 @@ class BayesianNetworkWidget(widgets.DOMWidget):
     query = Any().tag(sync=True)
 
     def __init__(self, bn, **kwargs):
+        """Create a new instance.
+
+        Args:
+            bn (BayesianNetwork): BN to display.
+        """
         super().__init__(**kwargs)
         self.bn = bn
 
-        probs = bn.compute_marginals()
-        self.marginals = {key: value.zipped() for key, value in probs.items()}
-
     @property
     def bn(self):
+        """Get the BN on display."""
         return BayesianNetwork.from_dict(self.value)
 
     @bn.setter
     def bn(self, bn):
+        """Set the BN on display."""
+        probs = bn.compute_marginals()
+        self.marginals = {key: value.zipped() for key, value in probs.items()}
+        self.query = {}
+
+        # Setting value updates the rendering of the BN, so has to be done last.
         self.value = bn.as_dict()
-
-

@@ -105,7 +105,6 @@ function compute_intersection(corners, line) {
     return intersection;
 }
 
-
 // Custom View. Renders the widget model.
 var View = widgets.DOMWidgetView.extend({
 
@@ -150,6 +149,7 @@ var View = widgets.DOMWidgetView.extend({
         console.log('value_changed()');
         var value = this.model.get('value');
         var marginals = this.model.get('marginals');
+        console.log('marginals:', marginals);
         // var trigger = this.model.get('trigger');
         // this.model.set('trigger', 'flubberdubberdub');
         // this.touch();
@@ -188,9 +188,6 @@ var View = widgets.DOMWidgetView.extend({
     },
 
     create_node: function(node, marginals) {
-        // console.log('Creating node', node);
-        // console.log('  ', marginals);
-
         const width = this.node_width;
         const height = this.compute_node_height(node)
 
@@ -205,26 +202,24 @@ var View = widgets.DOMWidgetView.extend({
         // Store a reference ...
         this.nodes[node.name] = group;
 
-        // Add mouse & drag/drop events to the group
-        const add_events = true;
-        if (add_events) {
-            // add cursor styling
-            group.on('mouseover', function() {
-                document.body.style.cursor = 'pointer';
-            });
+        // Add drag/drop events to the group
+        group.on('dragstart', (e) => {
+            // console.log('dragstart', e);
+        });
 
-            group.on('mouseout', function() {
-                document.body.style.cursor = 'default';
-            });
+        group.on('dragend', (e) => {
+          // console.log('dragend', e);
+          node.position = [e.target.x(), e.target.y()];
 
-            // write out drag and drop events
-            group.on('dragstart', function(e) {
-                console.log('dragstart', e);
-            });
-            group.on('dragend', function(e) {
-              console.log('dragend', e);
-            });
-        }
+          var value = this.model.get('value');
+
+          // For some reason the change to 'values' is not picked up until
+          // its value is set to something completely different. Spreading the
+          // object into a new one didn't help :-(
+          this.model.set('value', 'null');
+          this.model.set('value', {...value});
+          this.touch();
+        });
 
         // Show some background
         var rect = new Konva.Rect({
