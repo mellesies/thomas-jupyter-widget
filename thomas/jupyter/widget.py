@@ -31,8 +31,7 @@ class BayesianNetworkWidget(widgets.DOMWidget):
     # is automatically synced to the frontend *any* time it changes in Python.
     # It is synced back to Python from the frontend *any* time the model is touched.
     value = Any().tag(sync=True)
-    marginals = Any().tag(sync=True)
-    query = Any().tag(sync=True)
+    marginals_and_evidence = Any().tag(sync=True)
 
     def __init__(self, bn, **kwargs):
         """Create a new instance.
@@ -42,18 +41,49 @@ class BayesianNetworkWidget(widgets.DOMWidget):
         """
         super().__init__(**kwargs)
         self.bn = bn
+        bn.setWidget(self)
 
     @property
     def bn(self):
-        """Get the BN on display."""
-        return BayesianNetwork.from_dict(self.value)
+        return self._bn
 
     @bn.setter
     def bn(self, bn):
         """Set the BN on display."""
-        probs = bn.compute_marginals()
-        self.marginals = {key: value.zipped() for key, value in probs.items()}
-        self.query = {}
+        self._bn = bn
 
-        # Setting value updates the rendering of the BN, so has to be done last.
         self.value = bn.as_dict()
+        self.update()
+
+    @property
+    def marginals(self):
+        if 'marginals' in self.marginals_and_evidence:
+            return self.marginals_and_evidence['marginals']
+
+        return {}
+
+    @property
+    def evidence(self):
+        if 'evidence' in self.marginals_and_evidence:
+            return self.marginals_and_evidence['evidence']
+
+        return {}
+
+
+    def update(self):
+        """Update the marginals using the evidence set on the BN."""
+        probs = self.bn.get_marginals()
+        evidence = self.bn.evidence
+        marginals = {key: value.zipped() for key, value in probs.items()}
+
+        self.marginals_and_evidence = {
+            'marginals': marginals,
+            'evidence': evidence,
+        }
+
+
+    # @property
+    # def bn(self):
+    #     """Get the BN on display."""
+    #     return BayesianNetwork.from_dict(self.value)
+

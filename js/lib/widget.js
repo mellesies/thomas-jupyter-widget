@@ -31,8 +31,7 @@ var Model = widgets.DOMWidgetModel.extend({
         _model_module_version : '0.1.0',
         _view_module_version : '0.1.0',
         value : {},
-        marginals : {},
-        query : {},
+        marginals_and_evidence : {},
     })
 });
 
@@ -115,7 +114,7 @@ class Node extends Konva.Group {
      *   node (object): part of the JSON that defines a Node.
      *   marginals (dict): dict of marginals, indexed by state
      */
-    constructor(node, marginals, onDragMove, onDragEnd) {
+    constructor(node, marginals, evidence, onDragMove, onDragEnd) {
         // First things first
         super({
             x: node.position[0],
@@ -139,7 +138,7 @@ class Node extends Konva.Group {
 
         this.createBackground();
         this.createTitle();
-        this.createStates(marginals);
+        this.createStates(marginals, evidence);
 
         this.on('dragmove', () => onDragMove(this));
         this.on('dragend', () => onDragEnd(this));
@@ -221,7 +220,7 @@ class Node extends Konva.Group {
      *   idx (int): position in the list of states
      *   marginals (dict): dict of marginals, indexed by state
      */
-    createState(state, idx, marginals) {
+    createState(state, idx, marginals, evidence) {
         const y = (
             this._title_height
             + this._state_offset
@@ -238,11 +237,14 @@ class Node extends Konva.Group {
         var bar_width = 0;
         var bar_color = '#003366';
 
+        if (evidence && evidence === state) {
+            bar_color = '#00BCCC';
+        }
+
         if (marginals) {
             marginal = (100 * marginals[state]).toFixed(2) + '%';
             bar_width = 1 + remaining_width * marginals[state]
         }
-
 
         // Create the Group
         const group = new Konva.Group({y: y});
@@ -291,10 +293,10 @@ class Node extends Konva.Group {
         this.add(group);
     }
 
-    createStates(marginals) {
+    createStates(marginals, evidence) {
         const { states } = this.node;
         states.map((state, idx) => {
-            this.createState(state, idx, marginals)
+            this.createState(state, idx, marginals, evidence)
         });
     }
 
@@ -409,6 +411,8 @@ var View = widgets.DOMWidgetView.extend({
             this.layer = new Konva.Layer();
 
             this.model.on('change:value', this.value_changed, this);
+            this.model.on('change:marginals_and_evidence', this.value_changed, this);
+
             this.value_changed();
         }, 0)
     },
@@ -420,11 +424,14 @@ var View = widgets.DOMWidgetView.extend({
     value_changed: function() {
         console.log('value_changed()');
         var value = this.model.get('value');
-        var marginals = this.model.get('marginals');
+        var { marginals, evidence } = this.model.get('marginals_and_evidence');
 
         if (value.type !== 'BayesianNetwork') {
             return
         }
+
+        // console.log('marginals:', marginals);
+        console.log('evidence:', evidence);
 
         // Clear the layer
         this.layer.removeChildren();
@@ -437,6 +444,7 @@ var View = widgets.DOMWidgetView.extend({
             n = new Node(
                 node,
                 marginals[node.name],
+                evidence[node.name],
                 (n) => this.on_node_moving(n),
                 (n) => this.on_node_moved(n)
             );

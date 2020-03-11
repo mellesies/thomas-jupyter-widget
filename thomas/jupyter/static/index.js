@@ -6135,9 +6135,7 @@ var _ = __webpack_require__(25);
 var Konva = __webpack_require__(27);
 const { v1: uuid1 } = __webpack_require__(66);
 
-// import testcase from './testcase.js';
-
-// See example.py for the kernel counterpart to this file.
+// See widget.py for the kernel counterpart to this file.
 
 
 // Custom Model. Custom widgets models must at least provide default values
@@ -6164,8 +6162,7 @@ var Model = widgets.DOMWidgetModel.extend({
         _model_module_version : '0.1.0',
         _view_module_version : '0.1.0',
         value : {},
-        marginals : {},
-        query : {},
+        marginals_and_evidence : {},
     })
 });
 
@@ -6248,7 +6245,7 @@ class Node extends Konva.Group {
      *   node (object): part of the JSON that defines a Node.
      *   marginals (dict): dict of marginals, indexed by state
      */
-    constructor(node, marginals) {
+    constructor(node, marginals, evidence, onDragMove, onDragEnd) {
         // First things first
         super({
             x: node.position[0],
@@ -6256,9 +6253,9 @@ class Node extends Konva.Group {
             draggable: true,
         });
 
-        console.log('Node(): ', node, marginals);
-
+        this.name = node.name;
         this.node = node;
+        this.edges = [];
 
         this._title_height = 15;
         this._state_offset = 8;
@@ -6272,7 +6269,30 @@ class Node extends Konva.Group {
 
         this.createBackground();
         this.createTitle();
-        this.createStates(marginals);
+        this.createStates(marginals, evidence);
+
+        this.on('dragmove', () => onDragMove(this));
+        this.on('dragend', () => onDragEnd(this));
+    }
+
+    addEdge(edge) {
+        this.edges.push(edge);
+    }
+
+    getCenter() {
+        return {
+            x: this.x() + this.width() / 2,
+            y: this.y() + this.height() / 2
+        }
+    }
+
+    getCorners() {
+        return {
+            'tl': {x: this.x(), y: this.y()},
+            'tr': {x: this.x() + this.width(), y: this.y()},
+            'bl': {x: this.x(), y: this.y() + this.height()},
+            'br': {x: this.x() + this.width(), y: this.y() + this.height()},
+        }
     }
 
     /**
@@ -6331,7 +6351,7 @@ class Node extends Konva.Group {
      *   idx (int): position in the list of states
      *   marginals (dict): dict of marginals, indexed by state
      */
-    createState(state, idx, marginals) {
+    createState(state, idx, marginals, evidence) {
         const y = (
             this._title_height
             + this._state_offset
@@ -6348,11 +6368,14 @@ class Node extends Konva.Group {
         var bar_width = 0;
         var bar_color = '#003366';
 
+        if (evidence && evidence === state) {
+            bar_color = '#00BCCC';
+        }
+
         if (marginals) {
             marginal = (100 * marginals[state]).toFixed(2) + '%';
             bar_width = 1 + remaining_width * marginals[state]
         }
-
 
         // Create the Group
         const group = new Konva.Group({y: y});
@@ -6401,13 +6424,14 @@ class Node extends Konva.Group {
         this.add(group);
     }
 
-    createStates(marginals) {
+    createStates(marginals, evidence) {
         const { states } = this.node;
         states.map((state, idx) => {
-            this.createState(state, idx, marginals)
+            this.createState(state, idx, marginals, evidence)
         });
     }
 
+    // Events //
     onDragStart(e) {
         console.log('onDragStart:', e);
     }
@@ -6431,10 +6455,52 @@ class Edge extends Konva.Arrow {
      */
     constructor(src, dst) {
         super({
-
+            x: 0,
+            y: 0,
+            // points: [src_i.x, src_i.y, dst_i.x, dst_i.y],
+            pointerLength: 10,
+            pointerWidth: 10,
+            fill: 'black',
+            stroke: 'black',
+            strokeWidth: 2,
         });
+
         this.src = src;
         this.dst = dst;
+
+        this.recomputePoints();
+
+        src.addEdge(this);
+        dst.addEdge(this);
+    }
+
+    /**
+     * Recompute the arrow src -> dst.
+     */
+    recomputePoints() {
+        const { src, dst } = this;
+
+        const src_center = src.getCenter();
+        const dst_center = dst.getCenter();
+
+        const src_i = compute_intersection(
+            src.getCorners(),
+            {src: src_center, dst: dst_center}
+        );
+
+        const dst_i = compute_intersection(
+            dst.getCorners(),
+            {src: src_center, dst: dst_center}
+        );
+
+        this.points([src_i.x, src_i.y, dst_i.x, dst_i.y]);
+    }
+
+    /**
+     * Called by View when a Node moved.
+     */
+    onNodeMoving() {
+        this.recomputePoints();
     }
 }
 
@@ -6453,6 +6519,7 @@ var View = widgets.DOMWidgetView.extend({
         this.node_width = 180;
         this.nodes = [];
         this.edges = [];
+        this.map = {};
 
         this.el.innerHTML = `
             <div
@@ -6475,243 +6542,82 @@ var View = widgets.DOMWidgetView.extend({
             this.layer = new Konva.Layer();
 
             this.model.on('change:value', this.value_changed, this);
+            this.model.on('change:marginals_and_evidence', this.value_changed, this);
+
             this.value_changed();
         }, 0)
     },
 
+    /**
+     * Called once when this.model.get('value') changes.
+     * This should trigger a complete re-render of the canvas.
+     */
     value_changed: function() {
         console.log('value_changed()');
         var value = this.model.get('value');
-        var marginals = this.model.get('marginals');
+        var { marginals, evidence } = this.model.get('marginals_and_evidence');
 
         if (value.type !== 'BayesianNetwork') {
             return
         }
 
+        // console.log('marginals:', marginals);
+        console.log('evidence:', evidence);
+
         // Clear the layer
         this.layer.removeChildren();
 
-        // Create nodes
-        // this.create_node(node, marginals[node.name])
-        var nodes = value.nodes.map(node =>
-            new Node(node, marginals[node.name])
-        );
+        // Create nodes & mapping
+        this.map = {};
+        var n;
+
+        this.nodes = value.nodes.map(node => {
+            n = new Node(
+                node,
+                marginals[node.name],
+                evidence[node.name],
+                (n) => this.on_node_moving(n),
+                (n) => this.on_node_moved(n)
+            );
+
+            this.map[node.name] = n;
+            return n;
+        });
 
         // Create edges
-        // var edges = value.edges.map(edge =>
-        //     this.create_edge(edge)
-        // );
+        this.edges = value.edges.map(e => {
+            const
+                src = this.map[e[0]],
+                dst = this.map[e[1]];
 
-        // edges.forEach(i => this.layer.add(i));
-        nodes.forEach(i => this.layer.add(i));
+            return new Edge(src, dst);
+        })
 
-        // FIXME: does adding a layer that was already added make a difference?
+        // Add nodes & edges to the layer to the stage.
+        this.edges.forEach(i => this.layer.add(i));
+        this.nodes.forEach(i => this.layer.add(i));
         this.stage.add(this.layer);
+
         this.layer.draw();
     },
 
-    compute_node_height: function(node) {
-        return (
-            node.states.length * this.node_state_height
-            + 2 * this.node_state_offset
-            + this.node_title_height
-        )
+    on_node_moving(node) {
+        node.edges.forEach(e => e.onNodeMoving());
+        this.layer.draw();
     },
 
-    create_node: function(node, marginals) {
-        const width = this.node_width;
-        const height = this.compute_node_height(node)
+    on_node_moved(node) {
+        console.log(`node ${node.name} moved!`);
 
-        var group = new Konva.Group({
-            x: node.position[0],
-            y: node.position[1],
-            width: width,
-            height: height,
-            draggable: true,
-        });
+        // node.node contains a reference to the node's JSON definition
+        node.node.position = [node.x(), node.y()];
 
-        // Store a reference ...
-        this.nodes[node.name] = group;
-
-        // Add drag/drop events to the group
-        group.on('dragstart', (e) => {
-            // console.log('dragstart', e);
-        });
-
-        group.on('dragend', (e) => {
-          // console.log('dragend', e);
-          node.position = [e.target.x(), e.target.y()];
-
-          var value = this.model.get('value');
-
-          // this.model.set('value', 'null');
-          // this.model.set('value', {...value});
-          this.model.set('value', Object.assign({}, value));
-          this.touch();
-        });
-
-        // Show some background
-        var rect = new Konva.Rect({
-            fill: '#efefef',
-            // stroke: 'black',
-            // strokeWidth: 0,
-            width: width,
-            height: height,
-            cornerRadius: 5,
-            shadowBlur: 5,
-        });
-
-        group.add(rect);
-
-
-        // Node's RV in the top-left
-        var label = new Konva.Label();
-        label.add(
-            new Konva.Text({
-                text: node.name,
-                padding: 4,
-                fontSize: this.node_title_height,
-                fontStyle: "bold",
-                width: width,
-            })
-        );
-
-        group.add(label);
-
-        // Create states
-        const
-            label_width = 70,
-            probability_width = 55;
-
-        // For each state ...
-        node.states.map((state, idx) => {
-            const y = (
-                this.node_title_height
-                + this.node_state_offset
-                + idx * this.node_state_height
-            )
-
-            const remaining_width = width - label_width - probability_width;
-
-            var probability = '...';
-            var bar_width = 0;
-            var bar_color = '#003366';
-
-            if (marginals) {
-                probability = (100 * marginals[state]).toFixed(2) + '%';
-                bar_width = 1 + remaining_width * marginals[state]
-            }
-
-            /*
-            Create a group to hold all state related shapes:
-               - state label
-               - bar
-               - marginal
-            */
-            var state_group = new Konva.Group({
-                y: y,
-            });
-
-            // State label
-            state_group.add(
-                new Konva.Label().add(
-                    new Konva.Text({
-                        text: state,
-                        padding: this.node_state_padding,
-                        fontSize: this.node_state_height - this.node_state_padding,
-                        wrap: 'none',
-                        ellipsis: 'ellipsis',
-                        width: width,
-                    })
-                )
-            );
-
-            // State bar
-            state_group.add(
-                new Konva.Rect({
-                    x: label_width,
-                    y: 1,
-                    width: bar_width,
-                    height: this.node_state_height - 2,
-                    fill: bar_color,
-                })
-            );
-
-            // State marginal
-            state_group.add(
-                new Konva.Label({
-                    x: width - probability_width
-                }).add(
-                    new Konva.Text({
-                        text: probability,
-                        padding: this.node_state_padding,
-                        fontSize: this.node_state_height - this.node_state_padding,
-                        align: "right",
-                        wrap: "none",
-                        width: probability_width,
-                    })
-                )
-            );
-
-            group.add(state_group);
-        });
-
-        // this.layer.add(group);
-        return group;
+        var value = this.model.get('value');
+        // For some reason it is necessary to set value twice.
+        this.model.set('value', 'null');
+        this.model.set('value', Object.assign({}, value));
+        this.touch();
     },
-
-    compute_position: function(node) {
-        const center = {
-            x: node.x() + node.width()/2,
-            y: node.y() + node.height()/2
-        }
-
-        const corners = {
-            'tl': {x: node.x(), y: node.y()},
-            'tr': {x: node.x() + node.width(), y: node.y()},
-            'bl': {x: node.x(), y: node.y() + node.height()},
-            'br': {x: node.x() + node.width(), y: node.y() + node.height()},
-        }
-
-        return { center, corners }
-    },
-
-    create_edge: function(edge) {
-        const
-            src_node = this.nodes[edge[0]],
-            dst_node = this.nodes[edge[1]];
-
-        const
-            src = this.compute_position(src_node),
-            dst = this.compute_position(dst_node);
-
-        // console.log('  - src: ', src);
-        // console.log('  - dst: ', dst);
-
-        const src_i = compute_intersection(
-            src['corners'],
-            {src: src['center'], dst: dst['center']}
-        );
-
-        const dst_i = compute_intersection(
-            dst['corners'],
-            {src: src['center'], dst: dst['center']}
-        );
-
-        const arrow = new Konva.Arrow({
-            x: 0,
-            y: 0,
-            points: [src_i.x, src_i.y, dst_i.x, dst_i.y],
-            pointerLength: 10,
-            pointerWidth: 10,
-            fill: 'black',
-            stroke: 'black',
-            strokeWidth: 2,
-        });
-
-        // this.layer.add(arrow);
-        return arrow;
-    }
 });
 
 
