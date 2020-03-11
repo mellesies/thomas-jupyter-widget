@@ -6,15 +6,6 @@ A Custom Jupyter Widget Library
 Installation
 ------------
 
-To install use pip:
-
-    $ pip install git+https://github.com/mellesies/thomas-jupyter-widget.git
-    $ jupyter nbextension enable --py --sys-prefix thomas-jupyter-widget
-
-To install for jupyterlab
-
-    $ jupyter labextension install thomas-jupyter-widget
-
 For a development installation (requires npm),
 
     $ git clone https://github.com//thomas-jupyter-widget.git
