@@ -1,5 +1,5 @@
 import ipywidgets as widgets
-from traitlets import Unicode, Any, observe
+from traitlets import Integer, Unicode, Any, observe
 
 from thomas.core import BayesianNetwork
 
@@ -32,8 +32,10 @@ class BayesianNetworkWidget(widgets.DOMWidget):
     # It is synced back to Python from the frontend *any* time the model is touched.
     value = Any().tag(sync=True)
     marginals_and_evidence = Any().tag(sync=True)
+    evidence_sink = Any().tag(sync=True)
+    height = Integer(300).tag(sync=True)
 
-    def __init__(self, bn, **kwargs):
+    def __init__(self, bn, height=300, **kwargs):
         """Create a new instance.
 
         Args:
@@ -41,6 +43,9 @@ class BayesianNetworkWidget(widgets.DOMWidget):
         """
         super().__init__(**kwargs)
         self.bn = bn
+        self.height = height
+
+        # Associate the widget with the BN
         bn.setWidget(self)
 
     @property
@@ -81,9 +86,16 @@ class BayesianNetworkWidget(widgets.DOMWidget):
             'evidence': evidence,
         }
 
+    @observe('evidence_sink')
+    def sink_observer(self, value):
+        evidence = value['new']
+        # print('sink_observer checking in!', evidence)
 
-    # @property
-    # def bn(self):
-    #     """Get the BN on display."""
-    #     return BayesianNetwork.from_dict(self.value)
+        for RV, state in evidence.items():
+            if state:
+                self.bn.set_evidence_hard(RV, state, notify=False)
+            else:
+                self.bn.reset_evidence(RV, notify=False)
+
+        self.update()
 

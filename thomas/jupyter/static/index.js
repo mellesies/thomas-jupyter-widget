@@ -6163,6 +6163,8 @@ var Model = widgets.DOMWidgetModel.extend({
         _view_module_version : '0.1.0',
         value : {},
         marginals_and_evidence : {},
+        evidence_sink: '',
+        height: 300,
     })
 });
 
@@ -6245,13 +6247,19 @@ class Node extends Konva.Group {
      *   node (object): part of the JSON that defines a Node.
      *   marginals (dict): dict of marginals, indexed by state
      */
-    constructor(node, marginals, evidence, onDragMove, onDragEnd) {
+    constructor(node, marginals, evidence, eventhandlers) {
         // First things first
         super({
             x: node.position[0],
             y: node.position[1],
             draggable: true,
         });
+
+        const {
+            onDragMove,
+            onDragEnd,
+            onStateSelected,
+        } = eventhandlers;
 
         this.name = node.name;
         this.node = node;
@@ -6269,7 +6277,8 @@ class Node extends Konva.Group {
 
         this.createBackground();
         this.createTitle();
-        this.createStates(marginals, evidence);
+        this.createStates(marginals, evidence, onStateSelected);
+
 
         this.on('dragmove', () => onDragMove(this));
         this.on('dragend', () => onDragEnd(this));
@@ -6351,7 +6360,7 @@ class Node extends Konva.Group {
      *   idx (int): position in the list of states
      *   marginals (dict): dict of marginals, indexed by state
      */
-    createState(state, idx, marginals, evidence) {
+    createState(state, idx, marginals, evidence, onStateSelected) {
         const y = (
             this._title_height
             + this._state_offset
@@ -6421,27 +6430,15 @@ class Node extends Konva.Group {
             )
         );
 
+        group.on('dblclick', () => onStateSelected(this.name, state))
         this.add(group);
     }
 
-    createStates(marginals, evidence) {
+    createStates(marginals, evidence, onStateSelected) {
         const { states } = this.node;
         states.map((state, idx) => {
-            this.createState(state, idx, marginals, evidence)
+            this.createState(state, idx, marginals, evidence, onStateSelected)
         });
-    }
-
-    // Events //
-    onDragStart(e) {
-        console.log('onDragStart:', e);
-    }
-
-    onDragMove(e) {
-        console.log('onDragMove:', e);
-    }
-
-    onDragEnd(e) {
-        console.log('onDragEnd:', e);
     }
 }
 
@@ -6510,6 +6507,9 @@ var View = widgets.DOMWidgetView.extend({
 
     // Defines how the widget gets rendered into the DOM
     render: function() {
+        var height = this.model.get('height');
+        console.log("And everyday I'm rendering", height);
+
         this.container_id = `konva-container-${uuid1()}`
         this.node_title_height = 15;
         this.node_state_offset = 8;
@@ -6531,11 +6531,11 @@ var View = widgets.DOMWidgetView.extend({
 
         // Run this *after* the above <div> has rendered.
         setTimeout(() => {
-            console.log('Setting up Konva ...');
+            // console.log('Setting up Konva ...');
             this.stage = new Konva.Stage({
               container: this.container_id,
               width: 2048,
-              height: 300
+              height: height
             });
 
             // Create a Layer to hold all shapes
@@ -6553,7 +6553,7 @@ var View = widgets.DOMWidgetView.extend({
      * This should trigger a complete re-render of the canvas.
      */
     value_changed: function() {
-        console.log('value_changed()');
+        // console.log('value_changed()');
         var value = this.model.get('value');
         var { marginals, evidence } = this.model.get('marginals_and_evidence');
 
@@ -6562,7 +6562,7 @@ var View = widgets.DOMWidgetView.extend({
         }
 
         // console.log('marginals:', marginals);
-        console.log('evidence:', evidence);
+        // console.log('evidence:', evidence);
 
         // Clear the layer
         this.layer.removeChildren();
@@ -6575,9 +6575,11 @@ var View = widgets.DOMWidgetView.extend({
             n = new Node(
                 node,
                 marginals[node.name],
-                evidence[node.name],
-                (n) => this.on_node_moving(n),
-                (n) => this.on_node_moved(n)
+                evidence[node.name], {
+                    onDragMove: (n) => this.on_node_moving(n),
+                    onDragEnd: (n) => this.on_node_moved(n),
+                    onStateSelected: (RV, state) => this.on_state_selected(RV, state),
+                }
             );
 
             this.map[node.name] = n;
@@ -6618,6 +6620,27 @@ var View = widgets.DOMWidgetView.extend({
         this.model.set('value', Object.assign({}, value));
         this.touch();
     },
+
+    on_state_selected(RV, state) {
+        // console.log(`on_state_selected("${RV}", "${state}")`);
+
+        const { marginals, evidence } = this.model.get('marginals_and_evidence');
+        // console.log('evidence: ', evidence);
+
+        const e = Object.assign({}, evidence);
+
+        if (e[RV] && e[RV] === state) {
+            // console.log('  disabling state ...')
+            e[RV] = ''
+        } else {
+            // console.log('  setting evidence ...')
+            e[RV] = state;
+        }
+
+        // console.log('e: ', e);
+        this.model.set('evidence_sink', e);
+        this.touch();
+    }
 });
 
 
