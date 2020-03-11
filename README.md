@@ -8,7 +8,7 @@ Installation
 
 For a development installation (requires npm),
 
-    $ git clone https://github.com//thomas-jupyter-widget.git
+    $ git clone https://github.com/mellesies/thomas-jupyter-widget.git
     $ cd thomas-jupyter-widget
     $ pip install -e .
     $ jupyter nbextension install --py --symlink --sys-prefix thomas-jupyter-widget
