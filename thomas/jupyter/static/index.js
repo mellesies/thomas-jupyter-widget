@@ -6135,6 +6135,8 @@ var _ = __webpack_require__(25);
 var Konva = __webpack_require__(27);
 const { v1: uuid1 } = __webpack_require__(66);
 
+// import testcase from './testcase.js';
+
 // See example.py for the kernel counterpart to this file.
 
 
@@ -6237,6 +6239,206 @@ function compute_intersection(corners, line) {
 }
 
 
+class Node extends Konva.Group {
+
+    /**
+     * Create a new edge between two nodes.
+     *
+     * Args:
+     *   node (object): part of the JSON that defines a Node.
+     *   marginals (dict): dict of marginals, indexed by state
+     */
+    constructor(node, marginals) {
+        // First things first
+        super({
+            x: node.position[0],
+            y: node.position[1],
+            draggable: true,
+        });
+
+        console.log('Node(): ', node, marginals);
+
+        this.node = node;
+
+        this._title_height = 15;
+        this._state_offset = 8;
+        this._state_height = 14;
+        this._state_padding = 2;
+
+        this._width = 180
+        this._height = this.computeHeight();
+        this.width(this._width);
+        this.height(this._height);
+
+        this.createBackground();
+        this.createTitle();
+        this.createStates(marginals);
+    }
+
+    /**
+     * Compute the node's height based on the number of states.
+     */
+    computeHeight() {
+        const { node } = this;
+        return (
+            node.states.length * this._state_height
+            + 2 * this._state_offset
+            + this._title_height
+        )
+    }
+
+    /**
+     * Create an opaque background.
+     */
+    createBackground() {
+        this.add(
+            new Konva.Rect({
+                fill: '#efefef',
+                width: this._width,
+                height: this._height,
+                cornerRadius: 5,
+                shadowBlur: 5,
+            })
+        );
+    }
+
+    /**
+     * Create a label to display the RV.
+     */
+    createTitle() {
+        const { node } = this;
+
+        // Node's RV in the top-left
+        const label = new Konva.Label();
+        label.add(
+            new Konva.Text({
+                text: node.name,
+                padding: 4,
+                fontSize: this._title_height,
+                fontStyle: "bold",
+                width: this._width,
+            })
+        );
+
+        this.add(label);
+    }
+
+    /**
+     * Create a Group to hold a state's shapes.
+     *
+     * Args:
+     *   state (str): name/identifier of the state.
+     *   idx (int): position in the list of states
+     *   marginals (dict): dict of marginals, indexed by state
+     */
+    createState(state, idx, marginals) {
+        const y = (
+            this._title_height
+            + this._state_offset
+            + idx * this._state_height
+        )
+
+        const
+            label_width = 70,
+            marginal_width = 55;
+
+        const remaining_width = this._width - label_width - marginal_width;
+
+        var marginal = '...';
+        var bar_width = 0;
+        var bar_color = '#003366';
+
+        if (marginals) {
+            marginal = (100 * marginals[state]).toFixed(2) + '%';
+            bar_width = 1 + remaining_width * marginals[state]
+        }
+
+
+        // Create the Group
+        const group = new Konva.Group({y: y});
+
+        // State label
+        group.add(
+            new Konva.Label().add(
+                new Konva.Text({
+                    text: state,
+                    padding: this._state_padding,
+                    fontSize: this._state_height - this._state_padding,
+                    wrap: 'none',
+                    ellipsis: 'ellipsis',
+                    width: this._width,
+                })
+            )
+        );
+
+        // State bar
+        group.add(
+            new Konva.Rect({
+                x: label_width,
+                y: 1,
+                width: bar_width,
+                height: this._state_height - 2,
+                fill: bar_color,
+            })
+        );
+
+        // State marginal
+        group.add(
+            new Konva.Label({
+                x: this._width - marginal_width
+            }).add(
+                new Konva.Text({
+                    text: marginal,
+                    padding: this._state_padding,
+                    fontSize: this._state_height - this._state_padding,
+                    align: "right",
+                    wrap: "none",
+                    width: marginal_width,
+                })
+            )
+        );
+
+        this.add(group);
+    }
+
+    createStates(marginals) {
+        const { states } = this.node;
+        states.map((state, idx) => {
+            this.createState(state, idx, marginals)
+        });
+    }
+
+    onDragStart(e) {
+        console.log('onDragStart:', e);
+    }
+
+    onDragMove(e) {
+        console.log('onDragMove:', e);
+    }
+
+    onDragEnd(e) {
+        console.log('onDragEnd:', e);
+    }
+}
+
+class Edge extends Konva.Arrow {
+    /**
+     * Create a new edge between two nodes.
+     *
+     * Args:
+     *   src (Node): src
+     *   dst (Node): dst
+     */
+    constructor(src, dst) {
+        super({
+
+        });
+        this.src = src;
+        this.dst = dst;
+    }
+}
+
+
 // Custom View. Renders the widget model.
 var View = widgets.DOMWidgetView.extend({
 
@@ -6281,9 +6483,6 @@ var View = widgets.DOMWidgetView.extend({
         console.log('value_changed()');
         var value = this.model.get('value');
         var marginals = this.model.get('marginals');
-        // var trigger = this.model.get('trigger');
-        // this.model.set('trigger', 'flubberdubberdub');
-        // this.touch();
 
         if (value.type !== 'BayesianNetwork') {
             return
@@ -6293,16 +6492,17 @@ var View = widgets.DOMWidgetView.extend({
         this.layer.removeChildren();
 
         // Create nodes
+        // this.create_node(node, marginals[node.name])
         var nodes = value.nodes.map(node =>
-            this.create_node(node, marginals[node.name])
+            new Node(node, marginals[node.name])
         );
 
         // Create edges
-        var edges = value.edges.map(edge =>
-            this.create_edge(edge)
-        );
+        // var edges = value.edges.map(edge =>
+        //     this.create_edge(edge)
+        // );
 
-        edges.forEach(i => this.layer.add(i));
+        // edges.forEach(i => this.layer.add(i));
         nodes.forEach(i => this.layer.add(i));
 
         // FIXME: does adding a layer that was already added make a difference?
@@ -6319,9 +6519,6 @@ var View = widgets.DOMWidgetView.extend({
     },
 
     create_node: function(node, marginals) {
-        // console.log('Creating node', node);
-        // console.log('  ', marginals);
-
         const width = this.node_width;
         const height = this.compute_node_height(node)
 
@@ -6336,26 +6533,22 @@ var View = widgets.DOMWidgetView.extend({
         // Store a reference ...
         this.nodes[node.name] = group;
 
-        // Add mouse & drag/drop events to the group
-        const add_events = true;
-        if (add_events) {
-            // add cursor styling
-            group.on('mouseover', function() {
-                document.body.style.cursor = 'pointer';
-            });
+        // Add drag/drop events to the group
+        group.on('dragstart', (e) => {
+            // console.log('dragstart', e);
+        });
 
-            group.on('mouseout', function() {
-                document.body.style.cursor = 'default';
-            });
+        group.on('dragend', (e) => {
+          // console.log('dragend', e);
+          node.position = [e.target.x(), e.target.y()];
 
-            // write out drag and drop events
-            group.on('dragstart', function(e) {
-                console.log('dragstart', e);
-            });
-            group.on('dragend', function(e) {
-              console.log('dragend', e);
-            });
-        }
+          var value = this.model.get('value');
+
+          // this.model.set('value', 'null');
+          // this.model.set('value', {...value});
+          this.model.set('value', Object.assign({}, value));
+          this.touch();
+        });
 
         // Show some background
         var rect = new Konva.Rect({
