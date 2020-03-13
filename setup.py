@@ -120,9 +120,13 @@ class NPM(Command):
         # update package data in case this created new files
         update_package_data(self.distribution)
 
-version_ns = {}
-with open(os.path.join(here, 'thomas', 'jupyter', '_version.py')) as f:
+version_path = os.path.join(here, 'thomas', 'jupyter', '_version.py')
+version_ns = {
+    '__file__': version_path
+}
+with open(version_path) as f:
     exec(f.read(), {}, version_ns)
+
 
 setup_args = {
     'name': 'thomas-jupyter-widget',
@@ -140,7 +144,8 @@ setup_args = {
     ],
     'install_requires': [
         'ipywidgets>=7.0.0',
-        'thomas-core @git+https://github.com/mellesies/thomas-core',
+        'jupyterlab>=1.2.6, <2',
+        'thomas-core',
     ],
     'packages': find_namespace_packages(include=['thomas.*']),
     'zip_safe': False,

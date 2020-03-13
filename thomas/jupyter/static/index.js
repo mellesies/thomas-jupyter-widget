@@ -6508,7 +6508,7 @@ var View = widgets.DOMWidgetView.extend({
     // Defines how the widget gets rendered into the DOM
     render: function() {
         var height = this.model.get('height');
-        console.log("And everyday I'm rendering", height);
+        // console.log("And everyday I'm rendering", height);
 
         this.container_id = `konva-container-${uuid1()}`
         this.node_title_height = 15;
