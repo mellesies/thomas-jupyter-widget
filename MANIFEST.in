@@ -1,2 +1,3 @@
-recursive-include thomas/static *.*
+recursive-include thomas/jupyter/static *.*
 include thomas-jupyter-widget.json
+include thomas/jupyter/__build__

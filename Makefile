@@ -1,6 +1,8 @@
 # `make` is expected to be called from the directory that contains
 # this Makefile
 
+TAG := latest
+
 rebuild: clean build-dist
 
 build-dist:
@@ -17,6 +19,19 @@ publish-test:
 publish:
 	# Uploading to pypi.org
 	twine upload --repository pypi dist/*
+
+docker-image:
+	docker build \
+	  -t thomas-jupyter-widget:${TAG} \
+	  -t mellesies/thomas-jupyter-widget:${TAG} \
+	  ./
+
+docker-run:
+	# Run the docker image
+	docker run --rm -it -p 8888:8888 thomas-jupyter-widget:${TAG}
+
+docker-push:
+	mellesies/thomas-jupyter-widget:${TAG}
 
 clean:
 	# Cleaning ...
