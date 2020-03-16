@@ -3,7 +3,7 @@ thomas-jupyter-widget
 
 A Custom Jupyter Widget Library
 
-![img](img/screenshot.png)
+![img](https://raw.githubusercontent.com/mellesies/thomas-jupyter-widget/master/img/screenshot.png)
 
 
 Installation

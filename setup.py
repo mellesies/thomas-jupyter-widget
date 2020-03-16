@@ -5,6 +5,7 @@ from setuptools.command.build_py import build_py
 from setuptools.command.egg_info import egg_info
 from subprocess import check_call
 import os
+from os import path
 import sys
 import platform
 
@@ -22,7 +23,9 @@ log.set_verbosity(log.DEBUG)
 log.info('setup.py entered')
 log.info('$PATH=%s' % os.environ['PATH'])
 
-LONG_DESCRIPTION = 'A Custom Jupyter Widget Library'
+# Get the long description from the README file
+with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+    LONG_DESCRIPTION = f.read()
 
 def js_prerelease(command, strict=False):
     """decorator for building minified js/css prior to another command"""
@@ -133,6 +136,7 @@ setup_args = {
     'version': version_ns['__version__'],
     'description': 'A Custom Jupyter Widget Library',
     'long_description': LONG_DESCRIPTION,
+    'long_description_content_type': 'text/markdown',
     'include_package_data': True,
     'data_files': [
         ('share/jupyter/nbextensions/thomas-jupyter-widget', [
