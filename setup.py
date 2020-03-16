@@ -158,7 +158,7 @@ setup_args = {
 
     'author': 'Melle Sieswerda',
     'author_email': 'm.sieswerda@iknl.nl',
-    'url': 'https://github.com//thomas-jupyter-widget',
+    'url': 'https://github.com/mellesies/thomas-jupyter-widget',
     'keywords': [
         'ipython',
         'jupyter',

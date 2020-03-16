@@ -3,6 +3,9 @@ thomas-jupyter-widget
 
 A Custom Jupyter Widget Library
 
+![img](img/screenshot.png)
+
+
 Installation
 ------------
 
