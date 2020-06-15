@@ -7,7 +7,7 @@ from thomas.core import BayesianNetwork
 
 @widgets.register
 class BayesianNetworkWidget(widgets.DOMWidget):
-    """An example widget."""
+    """Widget displaying a Bayesian Network."""
 
     # Name of the widget view class in front-end
     _view_name = Unicode('View').tag(sync=True)
@@ -26,7 +26,6 @@ class BayesianNetworkWidget(widgets.DOMWidget):
     # Version of the front-end module containing widget model
     _model_module_version = Unicode('^0.1.0').tag(sync=True)
 
-    # Widget specific property.
     # Widget properties are defined as traitlets. Any property tagged with `sync=True`
     # is automatically synced to the frontend *any* time it changes in Python.
     # It is synced back to Python from the frontend *any* time the model is touched.
@@ -42,6 +41,8 @@ class BayesianNetworkWidget(widgets.DOMWidget):
             bn (BayesianNetwork): BN to display.
         """
         super().__init__(**kwargs)
+        # print(f'Hi! This is widget #{id(self)}')
+
         self.bn = bn
         self.height = height
 
@@ -74,6 +75,10 @@ class BayesianNetworkWidget(widgets.DOMWidget):
 
         return {}
 
+
+    def getPositions(self):
+        """Return the positions of the nodes."""
+        return {n['RV']: n['position'] for n in self.value['nodes']}
 
     def update(self):
         """Update the marginals using the evidence set on the BN."""
