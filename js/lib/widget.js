@@ -130,6 +130,7 @@ class Node extends Konva.Group {
             onStateSelected,
         } = eventhandlers;
 
+        this.RV = node.RV;
         this.name = node.name;
         this.node = node;
         this.edges = [];
@@ -210,13 +211,28 @@ class Node extends Konva.Group {
         const label = new Konva.Label();
         label.add(
             new Konva.Text({
-                text: node.name,
+                text: node.RV,
                 padding: 4,
                 fontSize: this._title_height,
                 fontStyle: "bold",
                 width: this._width,
             })
         );
+
+        // If full name differs from RV, display it behind the RV
+        if (node.RV != node.name) {
+            label.add(
+                new Konva.Text({
+                    x: 20,
+                    text: `| ${node.name}`,
+                    padding: 4,
+                    fontSize: this._title_height - 2,
+                    fontStyle: "normal",
+                    verticalAlign: "bottom",
+                    width: this._width,
+                })
+            );
+        }
 
         this.add(label);
     }
@@ -376,6 +392,7 @@ var View = widgets.DOMWidgetView.extend({
 
     // Defines how the widget gets rendered into the DOM
     render: function() {
+        // this.model refers to the *Python* model associated with this widget.
         var height = this.model.get('height');
         // console.log("And everyday I'm rendering", height);
 
@@ -423,6 +440,7 @@ var View = widgets.DOMWidgetView.extend({
      */
     value_changed: function() {
         // console.log('value_changed()');
+        // value holds the output of BayesianNetwork.as_dict()
         var value = this.model.get('value');
         var { marginals, evidence } = this.model.get('marginals_and_evidence');
 
@@ -436,22 +454,22 @@ var View = widgets.DOMWidgetView.extend({
         // Clear the layer
         this.layer.removeChildren();
 
-        // Create nodes & mapping
+        // Create nodes & mapping (indexed by RV)
         this.map = {};
         var n;
 
         this.nodes = value.nodes.map(node => {
             n = new Node(
                 node,
-                marginals[node.name],
-                evidence[node.name], {
+                marginals[node.RV],
+                evidence[node.RV], {
                     onDragMove: (n) => this.on_node_moving(n),
                     onDragEnd: (n) => this.on_node_moved(n),
                     onStateSelected: (RV, state) => this.on_state_selected(RV, state),
                 }
             );
 
-            this.map[node.name] = n;
+            this.map[node.RV] = n;
             return n;
         });
 
@@ -478,7 +496,7 @@ var View = widgets.DOMWidgetView.extend({
     },
 
     on_node_moved(node) {
-        console.log(`node ${node.name} moved!`);
+        console.log(`node ${node.RV} moved!`);
 
         // node.node contains a reference to the node's JSON definition
         node.node.position = [node.x(), node.y()];
