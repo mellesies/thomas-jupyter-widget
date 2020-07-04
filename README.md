@@ -19,9 +19,10 @@ For a development installation (requires npm),
     $ git clone https://github.com/mellesies/thomas-jupyter-widget.git
     $ cd thomas-jupyter-widget
     $ pip install -e .
-    $ jupyter nbextension install --py --symlink --sys-prefix thomas-jupyter-widget
-    $ jupyter nbextension enable --py --sys-prefix thomas-jupyter-widget
-    $ jupyter labextension install js
+    $ jupyter nbextension install --py --symlink --sys-prefix thomas.jupyter
+    $ jupyter nbextension enable --py --sys-prefix thomas.jupyter
+    $ jupyter labextension install --minimize=False @jupyter-widgets/jupyterlab-manager@1.0
+    $ jupyter labextension install --minimize=False js
 
 When actively developing your extension, build Jupyter Lab with the command:
 
@@ -43,7 +44,7 @@ Note on first `jupyter lab --watch`, you may need to touch a file to get Jupyter
     from thomas.core import get_pkg_data
     from thomas.core import BayesianNetwork, examples
     from thomas.jupyter import BayesianNetworkWidget
-    
+
     Gs = examples.get_student_network()
     view = BayesianNetworkWidget(Gs)
     display(view)
