@@ -2,7 +2,7 @@ var plugin = require('./index');
 var base = require('@jupyter-widgets/base');
 
 module.exports = {
-  id: 'thomas-jupyter-widget',
+  id: 'thomas-jupyter-widget:plugin',
   requires: [base.IJupyterWidgetRegistry],
   activate: function(app, widgets) {
       widgets.registerWidget({
@@ -13,3 +13,4 @@ module.exports = {
   },
   autoStart: true
 };
+
