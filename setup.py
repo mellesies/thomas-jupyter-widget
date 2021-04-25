@@ -52,6 +52,9 @@ setup_args = dict(
     include_package_data=True,
     install_requires=[
         'ipywidgets>=7.6.0',
+        # We'll need the latest build of jupyterlab until a version with commit
+        # #10150 is released on pypi.
+        'jupyterlab @ git+https://github.com/jupyterlab/jupyterlab'
     ],
     packages=find_namespace_packages(),
     zip_safe=False,
