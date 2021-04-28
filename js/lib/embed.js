@@ -6,16 +6,5 @@
 
 // Export widget models and views, and the npm package version number.
 // module.exports = require('./example.js');
-// module.exports = require('./viewer.js');
-
-// var example = require('./example.js');
-var widget = require('./widget.js');
-
-module.exports = {
-    Model: widget.Model,
-    View: widget.View,
-    // HelloModel: example.HelloModel,
-    // HelloView: example.HelloView,
-};
-
+module.exports = require('./widget.js');
 module.exports['version'] = require('../package.json').version;

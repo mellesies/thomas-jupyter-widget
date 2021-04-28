@@ -1,7 +1,12 @@
 # `make` is expected to be called from the directory that contains
 # this Makefile
 
-TAG := latest
+TAG ?= latest
+DOCKERFILE ?= Dockerfile
+PORT ?= 8888
+
+echo:
+	echo ${TAG}
 
 rebuild: clean build-dist
 
@@ -24,11 +29,12 @@ docker-image:
 	docker build \
 	  -t thomas-jupyter-widget:${TAG} \
 	  -t mellesies/thomas-jupyter-widget:${TAG} \
+	  -f ${DOCKERFILE} \
 	  ./
 
 docker-run:
 	# Run the docker image
-	docker run --rm -it -p 8888:8888 thomas-jupyter-widget:${TAG}
+	docker run --rm -it -p ${PORT}:8888 thomas-jupyter-widget:${TAG}
 
 docker-push:
 	mellesies/thomas-jupyter-widget:${TAG}

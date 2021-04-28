@@ -5,6 +5,7 @@ from thomas.core import BayesianNetwork
 
 # See js/lib/widget.js for the frontend counterpart to this file.
 
+
 @widgets.register
 class BayesianNetworkWidget(widgets.DOMWidget):
     """Widget displaying a Bayesian Network."""
@@ -26,15 +27,16 @@ class BayesianNetworkWidget(widgets.DOMWidget):
     # Version of the front-end module containing widget model
     _model_module_version = Unicode('^0.1.0').tag(sync=True)
 
-    # Widget properties are defined as traitlets. Any property tagged with `sync=True`
-    # is automatically synced to the frontend *any* time it changes in Python.
-    # It is synced back to Python from the frontend *any* time the model is touched.
+    # Widget properties are defined as traitlets. Any property tagged with `
+    # sync=True`is automatically synced to the frontend *any* time it changes
+    # in Python. It is synced back to Python from the frontend *any* time the
+    # model is touched.
     value = Any().tag(sync=True)
     marginals_and_evidence = Any().tag(sync=True)
     evidence_sink = Any().tag(sync=True)
     height = Integer(300).tag(sync=True)
 
-    def __init__(self, bn, height=300, **kwargs):
+    def __init__(self, bn: BayesianNetwork, height=300, **kwargs):
         """Create a new instance.
 
         Args:
@@ -50,11 +52,11 @@ class BayesianNetworkWidget(widgets.DOMWidget):
         bn.setWidget(self)
 
     @property
-    def bn(self):
+    def bn(self) -> BayesianNetwork:
         return self._bn
 
     @bn.setter
-    def bn(self, bn):
+    def bn(self, bn: BayesianNetwork):
         """Set the BN on display."""
         self._bn = bn
 
@@ -74,7 +76,6 @@ class BayesianNetworkWidget(widgets.DOMWidget):
             return self.marginals_and_evidence['evidence']
 
         return {}
-
 
     def getPositions(self):
         """Return the positions of the nodes."""

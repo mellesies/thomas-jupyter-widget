@@ -315,7 +315,7 @@ class Node extends Konva.Group {
             )
         );
 
-        group.on('dblclick', () => onStateSelected(this.name, state))
+        group.on('dblclick', () => onStateSelected(this.RV, state))
         this.add(group);
     }
 
@@ -408,10 +408,17 @@ var View = widgets.DOMWidgetView.extend({
         this.map = {};
 
         this.el.innerHTML = `
-            <div
-                id="${this.container_id}"
-                style="background-color: #336699"
-                >
+            <div>
+                <!--
+                <div style="padding: 10px; background-color: #336699">
+                    <button id="save">Save as image</button>
+                </div>
+                -->
+                <div
+                    id="${this.container_id}"
+                    style="background-color: #336699"
+                    >
+                </div>
             </div>
         `;
 
@@ -430,8 +437,30 @@ var View = widgets.DOMWidgetView.extend({
             this.model.on('change:value', this.value_changed, this);
             this.model.on('change:marginals_and_evidence', this.value_changed, this);
 
+            /*
+            document.getElementById('save').addEventListener(
+                'click',
+                () => {
+                  // var dataURL = this.layer.toDataURL({ pixelRatio: 3 });
+                  var dataURL = this.layer.toDataURL();
+                  this.downloadURI(dataURL, 'stage.png');
+                },
+                false
+            );
+            */
+
             this.value_changed();
         }, 0)
+    },
+
+    downloadURI: function(uri, name) {
+        var link = document.createElement('a');
+        link.download = name;
+        link.href = uri;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        delete link;
     },
 
     /**
